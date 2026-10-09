@@ -425,7 +425,10 @@ function onKeydown(ev) {
   what is below it. And the strip gives up its 1px gap -- it exists for a site banner, which the Talk
   view never shows, and left open it would run a line of the article's colour between tab and surface.
 */
-.page-view-tabs:has(+ .page-article-col.is-talk) {
+/* -> The `>` selector is a phone, where the strip is inside the column rather than before it
+      (`headerScrolls` in `pages/Index.vue`) */
+.page-view-tabs:has(+ .page-article-col.is-talk),
+.page-article-col.is-talk > .page-view-tabs {
   margin-bottom: 0;
 
   .page-view-tab.is-active {

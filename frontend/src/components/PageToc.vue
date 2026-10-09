@@ -174,8 +174,10 @@ function onClick(ev, item) {
  */
 function scrollportTop(heading) {
   for (let el = heading.parentElement; el; el = el.parentElement) {
-    if (['auto', 'scroll'].includes(getComputedStyle(el).overflowY)) {
-      return el.getBoundingClientRect().top
+    const style = getComputedStyle(el)
+    if (['auto', 'scroll'].includes(style.overflowY)) {
+      // -> Below whatever the scroller pads its top for: on a phone, the view strip stuck there
+      return el.getBoundingClientRect().top + (Number.parseFloat(style.scrollPaddingTop) || 0)
     }
   }
   return 0

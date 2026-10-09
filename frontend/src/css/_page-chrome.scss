@@ -495,6 +495,45 @@ $toc-overlay-max: 749.98px;
 }
 
 /*
+  A phone reading an article, where the header and the Article / Talk strip are the first things in
+  the article's scroller rather than above it (`headerScrolls` in `pages/Index.vue`), so that the title
+  scrolls away with the page instead of holding a fifth of the screen for the whole read.
+
+  The hairline above moves with the header: drawn on the column it would sit between the breadcrumbs
+  and the header now, doubling the header's own top rule, and leave nothing between header and strip.
+  So the column gives it up and the header draws it under itself, in the margin it keeps for it.
+
+  The strip sticks to the top of the scroller -- it is the way back from the discussion, and that has
+  to stay on screen -- and `scroll-padding-top` is its height plus its 1px gap, so a heading jumped to
+  lands under it rather than behind it. `helpers/anchors.js` and `PageToc.vue` read the same value.
+*/
+.page-container.page-container--header-scrolls {
+  border-top-width: 0;
+
+  .page-header {
+    flex: none;
+    margin-bottom: 1px;
+
+    @at-root .body--light & {
+      box-shadow: 0 1px 0 #fff;
+    }
+    @at-root .body--dark & {
+      box-shadow: 0 1px 0 $dark-6;
+    }
+  }
+
+  .page-view-tabs {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+  }
+
+  .page-container-scrl:has(> .page-view-tabs) {
+    scroll-padding-top: 37px;
+  }
+}
+
+/*
   The article column's own edge, which is the strip's rule turned the corner: the strip
   closes the top of the column, this closes its side, and the two meet at the strip's bottom corner so
   that what is drawn reads as one line round the content rather than as two borders that happen to

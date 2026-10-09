@@ -433,8 +433,12 @@ function onKeydown(ev) {
   An idea stands on the same grey (`.is-idea`), so its tab does likewise. A banner there is drawn on
   the grey too, inside the surface rather than against the strip, so the gap is not missed.
 */
+/* -> The `>` selectors are a phone, where the strip is inside the column rather than before it
+      (`headerScrolls` in `pages/Index.vue`) */
 .page-view-tabs:has(+ .page-article-col.is-talk),
-.page-view-tabs:has(+ .page-article-col.is-idea) {
+.page-view-tabs:has(+ .page-article-col.is-idea),
+.page-article-col.is-talk > .page-view-tabs,
+.page-article-col.is-idea > .page-view-tabs {
   margin-bottom: 0;
 
   .page-view-tab.is-active {

@@ -100,7 +100,10 @@ function positionOf(el, scroller) {
 /** How far the heading is from where a scroll aiming at it would put it. */
 function driftOf(el, scroller) {
   const margin = Number.parseFloat(getComputedStyle(el).scrollMarginTop) || 0
-  const wanted = scroller.getBoundingClientRect().top + margin
+  // -> The scroller's own padding too: on a phone the view strip sticks to the top of it, and
+  //    `scrollIntoView` lands the heading under the strip rather than at the scroller's edge
+  const padding = Number.parseFloat(getComputedStyle(scroller).scrollPaddingTop) || 0
+  const wanted = scroller.getBoundingClientRect().top + margin + padding
   return el.getBoundingClientRect().top - wanted
 }
 

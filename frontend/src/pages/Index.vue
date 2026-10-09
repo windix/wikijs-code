@@ -55,8 +55,13 @@
         </div>
       </div>
     </div>
+    <!--
+      Above the columns everywhere but a phone reading an article, where it rides at the top of the
+      article's own scroller instead -- see `headerScrolls`. Not aligned to the body there either: on a
+      phone the body fills the column the header is now inside of, so there is no measure to line up with.
+    -->
     <page-header
-      v-if="!pageStore.notFound"
+      v-if="!pageStore.notFound && !headerScrolls"
       :class="{ 'is-aligned': headerBounds !== null }"
       :style="
         headerBounds !== null
@@ -69,7 +74,10 @@
     <!-- -> `min-h-0` so the columns inside can be shorter than their content and scroll -->
     <div
       class="page-container flex min-h-0 flex-nowrap items-stretch"
-      :class="{ 'page-container--toc-left': tocColumnIsLeft }"
+      :class="{
+        'page-container--toc-left': tocColumnIsLeft,
+        'page-container--header-scrolls': headerScrolls
+      }"
       style="flex: 1 1 100%">
       <!--
         `flex flex-col min-h-0`: the strip below is fixed to the top of this column and the scrolling
@@ -95,7 +103,7 @@
           jumped to underneath it.
         -->
         <page-view-tabs
-          v-if="showTalkTab || showLinksTab"
+          v-if="(showTalkTab || showLinksTab) && !headerScrolls"
           :model-value="activeView"
           :talk="showTalkTab"
           :links="showLinksTab"
@@ -183,6 +191,22 @@
           }"
           ref="pageScroller"
           v-else>
+          <!--
+            On a phone the header and the strip are the first things IN the scroller rather than above
+            it, so the title and description scroll away with the article instead of holding a fifth
+            of an 800px screen for the whole read. The strip is sticky, which keeps what the note on
+            it above asks for -- the way back from the discussion stays on screen -- and the scroller's
+            `scroll-padding-top` (`_page-chrome.scss`) keeps a heading jumped to out from under it.
+          -->
+          <template v-if="headerScrolls">
+            <page-header />
+            <page-view-tabs
+              v-if="showTalkTab || showLinksTab"
+              :model-value="activeView"
+              :talk="showTalkTab"
+              :links="showLinksTab"
+              @update:model-value="switchView" />
+          </template>
           <!-- -> Half the padding on a phone, where 16px a side is 8% of the window spent on margin;
                   the stylesheet has `--content-bleed` to match -->
           <div class="page-container-body p-2 sm:p-4" :class="{ 'is-centered': isCentered }">
@@ -701,7 +725,7 @@ import { useDark } from '@/composables/dark'
 import { dialog } from '@/composables/dialog'
 import { confirmDiscardUnsaved, useEditorBuffer } from '@/composables/editorBuffer'
 import { useMeta } from '@/composables/meta'
-import { useMinWidth } from '@/composables/screen'
+import { useMinWidth, useScreen } from '@/composables/screen'
 import { usePageScripts } from '@/composables/pageScripts'
 import { notify } from '@/composables/notify'
 import { withViewTransition } from '@/composables/viewTransition'
@@ -958,6 +982,24 @@ const annotator = ref(null)
  */
 const isAtLeast750 = useMinWidth(750)
 const tocIsPanel = computed(() => !isAtLeast750.value)
+
+const screen = useScreen()
+
+/**
+ * Whether the page header and the view strip are drawn inside the article's scroller rather than
+ * above it, which is a phone reading an article: there the header is a fifth of the screen, and held
+ * in place it is a fifth of the screen the article never gets. Only where the scroller is what is
+ * drawn -- the editor, the lock screen, the missing-page screen and a redirection each take its
+ * place and keep the header above them, the editor because its header is the title being edited.
+ */
+const headerScrolls = computed(
+  () =>
+    !screen.gte.sm &&
+    !editorStore.isActive &&
+    !pageStore.isLocked &&
+    !pageStore.notFound &&
+    !isRedirect.value
+)
 
 /** Whether the contents panel is on screen. Never true while the contents are a column. */
 const tocPanelIsOpen = computed(() => tocIsPanel.value && showSidebar.value && state.tocPanelOpen)

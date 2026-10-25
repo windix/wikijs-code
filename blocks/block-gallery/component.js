@@ -67,6 +67,9 @@ function labelFor(address) {
  *     https://example.com/photo-1.jpg
  *     /photos/photo-2.jpg
  *     ::
+ *
+ * Galleries given the same `group` share one lightbox: a page that puts a few photos under each of
+ * its headings can still be looked through from the first to the last without closing it.
  */
 export class BlockGalleryElement extends LitElement {
   /**
@@ -102,6 +105,12 @@ export class BlockGalleryElement extends LitElement {
         hint: 'Let each tile take the shape of its image, instead of holding every one square.',
         // -> Stated, so that a toggle switched on and then off again writes nothing into the page
         default: false
+      },
+      {
+        name: 'group',
+        type: 'string',
+        label: 'Group',
+        hint: 'Galleries on the page sharing a group are stepped through as one set in the lightbox.'
       }
     ],
     template: `https://example.com/photo-1.jpg
@@ -351,9 +360,17 @@ https://example.com/photo-2.jpg`
        */
       unlockAspectRatio: boolean,
 
+      /**
+       * The galleries on the page this one shares its lightbox with, by name. Empty is none.
+       * @type {string}
+       */
+      group: { type: String },
+
       // Internal Properties
       _images: { state: true },
-      /** Which image the lightbox is showing, or -1 while it is closed. */
+      /** What the lightbox steps through: this gallery's images, or its whole group's. */
+      _set: { state: true },
+      /** Which image of `_set` the lightbox is showing, or -1 while it is closed. */
       _index: { state: true }
     }
   }
@@ -363,7 +380,9 @@ https://example.com/photo-2.jpg`
     this.thumbnailSize = 180
     this.fit = 'cover'
     this.unlockAspectRatio = false
+    this.group = ''
     this._images = []
+    this._set = []
     this._index = -1
     // -> Puts `dark` on this element for the styles above to key off
     this._darkMode = new DarkMode(this)
@@ -405,18 +424,53 @@ https://example.com/photo-2.jpg`
   _preloadNeighbours() {
     for (const step of [-1, 1]) {
       const image = new Image()
-      image.src = this._images[this._wrap(this._index + step)]
+      image.src = this._set[this._wrap(this._index + step)]
     }
   }
 
-  /** An index brought back into the gallery, so that the last photo is followed by the first. */
+  /** An index brought back into the set, so that the last photo is followed by the first. */
   _wrap(index) {
-    const count = this._images.length
+    const count = this._set.length
     return (index + count) % count
   }
 
+  /**
+   * What the lightbox steps through when it opens on one of this gallery's images, and where this
+   * gallery's own images start in it.
+   *
+   * Without a group that is this gallery alone. With one, it is the images of every gallery on the
+   * page in that group, in the order the page has them -- gathered as the lightbox opens rather than
+   * once, since galleries come and go with the page and the editor's preview redraws them as the
+   * author types. A gallery inside another block is still in the light DOM, so one inside a tab is
+   * found with the rest.
+   */
+  _gatherSet() {
+    const group = (this.group ?? '').trim()
+    if (!group) {
+      return { images: this._images, offset: 0 }
+    }
+    const members = [...document.querySelectorAll('block-gallery')].filter(
+      (gallery) => (gallery.group ?? '').trim() === group
+    )
+    if (!members.includes(this)) {
+      // -> Somewhere a document query cannot see into, such as another shadow root: on its own, then
+      return { images: this._images, offset: 0 }
+    }
+    const images = []
+    let offset = 0
+    for (const gallery of members) {
+      if (gallery === this) {
+        offset = images.length
+      }
+      images.push(...gallery._images)
+    }
+    return { images, offset }
+  }
+
   async _show(index) {
-    this._index = index
+    const { images, offset } = this._gatherSet()
+    this._set = images
+    this._index = offset + index
     // -> Shown only once the image it is showing has been rendered, so the lightbox never opens empty
     await this.updateComplete
     this._dialog?.showModal()
@@ -514,7 +568,7 @@ https://example.com/photo-2.jpg`
    * for is a photo fetched per gallery on every page it appears on.
    */
   _renderLightbox() {
-    const address = this._images[this._index]
+    const address = this._set[this._index]
     return html`
       <dialog
         class="lightbox"
@@ -529,7 +583,7 @@ https://example.com/photo-2.jpg`
                   <img src=${address} alt=${labelFor(address)} />
                 </div>
                 ${
-                  this._images.length > 1
+                  this._set.length > 1
                     ? html`
                         <button
                           class="chrome is-previous"
@@ -547,7 +601,7 @@ https://example.com/photo-2.jpg`
                           @click=${this._next}>
                           ${this._icon(ICONS.next)}
                         </button>
-                        <div class="counter">${this._index + 1} / ${this._images.length}</div>
+                        <div class="counter">${this._index + 1} / ${this._set.length}</div>
                       `
                     : null
                 }
